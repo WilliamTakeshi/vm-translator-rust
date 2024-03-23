@@ -8,6 +8,8 @@ use nom::IResult;
 use std::fs::File;
 use std::io::prelude::*;
 
+mod translate;
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -26,13 +28,16 @@ fn main() -> anyhow::Result<()> {
     let mut file = File::open(args.input)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    // let mut new_file = File::create(args.output)?;
+    let mut new_file = File::create(args.output)?;
 
     let foo = contents
         .lines()
         .map(|line| line.trim())
         .filter(|line| !line.is_empty() && !line.starts_with("//"))
         .map(|line| parse_line(line))
+        .enumerate()
+        .map(|(n, command)| translate::translate_command(command.unwrap(), n))
+        .map(|line| new_file.write_all(format!("{}\n", line).as_bytes()))
         .collect::<Vec<_>>();
 
     println!("{:?}", foo);
