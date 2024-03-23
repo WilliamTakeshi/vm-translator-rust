@@ -41,39 +41,59 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn parse_line(input: &str) -> anyhow::Result<Command> {
+    if input.starts_with("push") || input.starts_with("pop") {
+        return parse_push_pop(input);
+    } else if input.starts_with("add") {
+        return Ok(Command::Add);
+    } else if input.starts_with("sub") {
+        return Ok(Command::Sub);
+    } else if input.starts_with("neg") {
+        return Ok(Command::Neg);
+    } else if input.starts_with("eq") {
+        return Ok(Command::Eq);
+    } else if input.starts_with("gt") {
+        return Ok(Command::Gt);
+    } else if input.starts_with("lt") {
+        return Ok(Command::Lt);
+    } else if input.starts_with("and") {
+        return Ok(Command::And);
+    } else if input.starts_with("or") {
+        return Ok(Command::Or);
+    } else if input.starts_with("not") {
+        return Ok(Command::Not);
+    } else {
+        return Err(anyhow::anyhow!("Invalid command"));
+    }
+}
+
+fn parse_push_pop(input: &str) -> anyhow::Result<Command> {
     let mut parser_u16 = map_res(digit1::<&str, nom::error::Error<&str>>, |s: &str| {
         s.parse::<u16>()
     });
 
-    let (line, method) = parse_command(input)
+    let (line, method) = parse_push_pop_command(input)
         .map_err(|e| e.to_owned())
         .context("Failed to parse method")?;
     let (line, segment) = parse_segment(line)
         .map_err(|e| e.to_owned())
         .context("Failed to parse memory segment")?;
-    let (line, value) = parser_u16(line)
+    let (_, value) = parser_u16(line)
         .map_err(|e| e.to_owned())
         .context("Failed to parse memory segment")?;
-    Ok(
-        Command {
-            method,
-            segment,
-            value,
-        }
-    )
-}
-
-#[derive(Debug)]
-pub struct Command {
-    method: Method,
-    segment: Segment,
-    value: u16,
+    Ok(Command::PushPop {
+        method,
+        segment,
+        value,
+    })
 }
 
 #[derive(Debug, Clone)]
-enum Method {
-    Push,
-    Pull,
+enum Command {
+    PushPop {
+        method: Method,
+        segment: Segment,
+        value: u16,
+    },
     Add,
     Sub,
     Neg,
@@ -83,21 +103,28 @@ enum Method {
     And,
     Or,
     Not,
+    // Branching {
+    //     method: Method,
+    //     label: String,
+    // },
+    // Function {
+    //     method: Method,
+    //     label: String,
+    //     n: u16,
+    // },
+    // Return,
 }
 
-fn parse_command(input: &str) -> IResult<&str, Method> {
+#[derive(Debug, Clone)]
+enum Method {
+    Push,
+    Pull,
+}
+
+fn parse_push_pop_command(input: &str) -> IResult<&str, Method> {
     alt((
         value(Method::Push, tag("push ")),
         value(Method::Pull, tag("pull ")),
-        value(Method::Add, tag("add")),
-        value(Method::Sub, tag("sub")),
-        value(Method::Neg, tag("neg")),
-        value(Method::Eq, tag("eq")),
-        value(Method::Gt, tag("gt")),
-        value(Method::Lt, tag("lt")),
-        value(Method::And, tag("and")),
-        value(Method::Or, tag("or")),
-        value(Method::Not, tag("not")),
     ))(input)
 }
 
