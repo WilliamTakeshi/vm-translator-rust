@@ -123,13 +123,13 @@ enum Command {
 #[derive(Debug, Clone)]
 enum Method {
     Push,
-    Pull,
+    Pop,
 }
 
 fn parse_push_pop_command(input: &str) -> IResult<&str, Method> {
     alt((
         value(Method::Push, tag("push ")),
-        value(Method::Pull, tag("pull ")),
+        value(Method::Pop, tag("pop ")),
     ))(input)
 }
 
