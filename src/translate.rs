@@ -5,6 +5,7 @@ use crate::{Command, Method, Segment};
 
 
 pub fn translate_command(command: Command, index: usize) -> String {
+    println!("Translating command: {:?}", command);
     match command {
         Command::PushPop {
             method: Method::Push,
@@ -20,22 +21,22 @@ pub fn translate_command(command: Command, index: usize) -> String {
             method: Method::Push,
             segment: Segment::This,
             value,
-        } => format!("@{}\nD=A\n@THIS\nA=M+D\n D=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
+        } => format!("@{}\nD=A\n@THIS\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
         Command::PushPop {
             method: Method::Push,
             segment: Segment::That,
             value,
-        } => format!("@{}\nD=A\n@THAT\nA=M+D\n D=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
+        } => format!("@{}\nD=A\n@THAT\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
         Command::PushPop {
             method: Method::Push,
             segment: Segment::Argument,
             value,
-        } => format!("@{}\nD=A\n@ARG\nA=M+D\n D=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
+        } => format!("@{}\nD=A\n@ARG\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
         Command::PushPop {
             method: Method::Push,
             segment: Segment::Local,
             value,
-        } => format!("@{}\nD=A\n@LCL\nA=M+D\n D=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
+        } => format!("@{}\nD=A\n@LCL\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", value),
         Command::PushPop {
             method: Method::Push,
             segment: Segment::Temp,
@@ -101,6 +102,9 @@ pub fn translate_command(command: Command, index: usize) -> String {
         Command::Not => "@SP\nA=M-1\nM=!M\n".to_string(),
         Command::Or => "@SP\nAM=M-1\nD=M\n@SP\nA=M-1\nM=D|M\n".to_string(),
         Command::And => "@SP\nAM=M-1\nD=M\n@SP\nA=M-1\nM=D&M\n".to_string(),
+        Command::IfGoTo { label } => format!("@{label}\n0;JMP\n").to_string(),
+        Command::GoTo { label } => format!("@SP\nAM=M-1\nD=M\nA=A-1\n@{label}\nD;JNE\n").to_string(),
+        Command::Label { label } => format!("({label})\n").to_string(),
     }
 }
 

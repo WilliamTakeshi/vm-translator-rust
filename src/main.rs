@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::{tag, take_till};
 use nom::character::complete::digit1;
 use nom::combinator::{map_res, value};
 use nom::IResult;
@@ -46,8 +46,15 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn parse_line(input: &str) -> anyhow::Result<Command> {
+    println!("Parsing line: {:?}", input);
     if input.starts_with("push") || input.starts_with("pop") {
         return parse_push_pop(input);
+    } else if input.starts_with("label ") {
+        return parse_label(input);
+    } else if input.starts_with("if-goto") {
+        return parse_if_goto(input);
+    } else if input.starts_with("goto") {
+        return parse_goto(input);
     } else if input.starts_with("add") {
         return Ok(Command::Add);
     } else if input.starts_with("sub") {
@@ -92,6 +99,54 @@ fn parse_push_pop(input: &str) -> anyhow::Result<Command> {
     })
 }
 
+fn parse_label(input: &str) -> anyhow::Result<Command> {
+    let temp: IResult<&str, &str> = tag("label ")(input);
+    let (input, _) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    let temp: IResult<&str, &str> = take_till(|c: char| c.is_whitespace() || c == '/')(input);
+    let (_, label) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    Ok(Command::Label {
+        label: label.to_string(),
+    })
+}
+
+fn parse_if_goto(input: &str) -> anyhow::Result<Command> {
+    let temp: IResult<&str, &str> = tag("if-goto ")(input);
+    let (input,_) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    let temp: IResult<&str, &str> = take_till(|c: char| c.is_whitespace() || c == '/')(input);
+    let (_, label) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    Ok(Command::IfGoTo {
+        label: label.to_string(),
+    })
+}
+
+fn parse_goto(input: &str) -> anyhow::Result<Command> {
+    let temp: IResult<&str, &str> = tag("goto ")(input);
+    let (input,_) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    let temp: IResult<&str, &str> = take_till(|c: char| c.is_whitespace() || c == '/')(input);
+    let (_, label) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+
+    Ok(Command::GoTo {
+        label: label.to_string(),
+    })
+}
+
 #[derive(Debug, Clone)]
 enum Command {
     PushPop {
@@ -108,10 +163,15 @@ enum Command {
     And,
     Or,
     Not,
-    // Branching {
-    //     method: Method,
-    //     label: String,
-    // },
+    Label {
+        label: String,
+    },
+    IfGoTo{
+        label: String,
+    },
+    GoTo{
+        label: String,
+    }
     // Function {
     //     method: Method,
     //     label: String,
