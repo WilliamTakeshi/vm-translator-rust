@@ -55,6 +55,8 @@ fn parse_line(input: &str) -> anyhow::Result<Command> {
         return parse_if_goto(input);
     } else if input.starts_with("goto") {
         return parse_goto(input);
+    } else if input.starts_with("function") || input.starts_with("call") {
+        return parse_function_call(input);
     } else if input.starts_with("add") {
         return Ok(Command::Add);
     } else if input.starts_with("sub") {
@@ -73,6 +75,8 @@ fn parse_line(input: &str) -> anyhow::Result<Command> {
         return Ok(Command::Or);
     } else if input.starts_with("not") {
         return Ok(Command::Not);
+    } else if input.starts_with("return") {
+        return Ok(Command::Return);
     } else {
         return Err(anyhow::anyhow!("Invalid command"));
     }
@@ -99,6 +103,41 @@ fn parse_push_pop(input: &str) -> anyhow::Result<Command> {
     })
 }
 
+fn parse_function_call(input: &str) -> anyhow::Result<Command> {
+    let mut parser_u16 = map_res(digit1::<&str, nom::error::Error<&str>>, |s: &str| {
+        s.parse::<u16>()
+    });
+
+    let temp: IResult<&str, &str> = take_till(|c: char| c.is_whitespace())(input);
+
+    let (input, func_or_call) = temp
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse method")?;
+    // dbg!(func_or_call);
+
+    let temp: IResult<&str, &str> = take_till(|c: char| c.is_whitespace())(input.trim());
+    let (input, label) = temp
+        .map_err(|e: nom::Err<nom::error::Error<&str>>| e.to_owned())
+        .context("Failed to parse method")?;
+    // dbg!(label);
+
+    let (_, value) = parser_u16(input.trim())
+        .map_err(|e| e.to_owned())
+        .context("Failed to parse memory segment")?;
+    // dbg!(value);
+    if func_or_call == "function" {
+        Ok(Command::Function {
+            label: label.to_string(),
+            n: value,
+        })
+    } else {
+        Ok(Command::Call {
+            label: label.to_string(),
+            n: value,
+        })
+    }
+}
+
 fn parse_label(input: &str) -> anyhow::Result<Command> {
     let temp: IResult<&str, &str> = tag("label ")(input);
     let (input, _) = temp
@@ -117,7 +156,7 @@ fn parse_label(input: &str) -> anyhow::Result<Command> {
 
 fn parse_if_goto(input: &str) -> anyhow::Result<Command> {
     let temp: IResult<&str, &str> = tag("if-goto ")(input);
-    let (input,_) = temp
+    let (input, _) = temp
         .map_err(|e| e.to_owned())
         .context("Failed to parse memory segment")?;
 
@@ -133,7 +172,7 @@ fn parse_if_goto(input: &str) -> anyhow::Result<Command> {
 
 fn parse_goto(input: &str) -> anyhow::Result<Command> {
     let temp: IResult<&str, &str> = tag("goto ")(input);
-    let (input,_) = temp
+    let (input, _) = temp
         .map_err(|e| e.to_owned())
         .context("Failed to parse memory segment")?;
 
@@ -166,18 +205,21 @@ enum Command {
     Label {
         label: String,
     },
-    IfGoTo{
+    IfGoTo {
         label: String,
     },
-    GoTo{
+    GoTo {
         label: String,
-    }
-    // Function {
-    //     method: Method,
-    //     label: String,
-    //     n: u16,
-    // },
-    // Return,
+    },
+    Function {
+        label: String,
+        n: u16,
+    },
+    Call {
+        label: String,
+        n: u16,
+    },
+    Return,
 }
 
 #[derive(Debug, Clone)]
